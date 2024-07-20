@@ -9,5 +9,8 @@ describe("splitDoc", () => {
     const docs = await splitDoc(process.env.ASSET_FILE_PATH!);
     expect(docs.length).not.toBe(0);
     expect(docs).not.toEqual(undefined);
+    docs.forEach((doc) => {
+      expect(doc.metadata).toHaveProperty("chapter");
+    });
   });
 });
