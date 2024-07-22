@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
-import { OpenAI } from "@langchain/openai";
 import { OpenAIEmbeddings, ChatOpenAI } from "@langchain/openai";
+import { Pinecone } from "@pinecone-database/pinecone";
 import { PineconeStore } from "@langchain/pinecone";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import {
@@ -11,26 +11,29 @@ import {
 import { splitDoc } from "./doc/doc";
 import { formatDocumentsAsString } from "langchain/util/document";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
+import {
+  parseCharacterNames,
+  parseInteraction,
+  uniquePairs,
+} from "./parse/parse";
+import { promptForContinue, promptOption } from "./ux/ux";
+import { createNewIndex, useExistingIndex } from "./store/store";
 
 dotenv.config();
 
-const embeddingAPI = new OpenAIEmbeddings({
-  model: "gpt-4o-mini",
-  stripNewLines: true,
-  configuration: {},
-  apiKey: process.env.OPENAI_API_KEY,
-});
 const chatAPI = new ChatOpenAI({ model: "gpt-4o-mini", temperature: 0 });
 
 async function main() {
-  const splitDocs = await splitDoc(process.env.ASSET_FILE_PATH!);
-  const store = await PineconeStore.fromDocuments(splitDocs, embeddingAPI, {
-    onFailedAttempt: (err) => {
-      console.log("An error occurred with the Pinecone Store", err);
-    },
-    maxConcurrency: 5,
-  });
-  const retriever = store.asRetriever({ k: 4, searchType: "similarity" });
+  const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+  const indices = await pinecone.listIndexes();
+
+  const storeOption = promptOption([
+    "Use existing Pinecone data",
+    "Build new Pinecone Index",
+  ]);
+  const retriever = await (storeOption === 0
+    ? useExistingIndex()
+    : createNewIndex());
 
   const prompt = ChatPromptTemplate.fromTemplate<{
     context: string;
@@ -38,13 +41,13 @@ async function main() {
   }>(
     [
       "You are a narrative analyst answering quetions about a book.",
-      "Use the following pieces of retrieved context to answer the question.",
+      "Use the following excerpts of retrieved context to answer the question.",
       "If you don't know the answer, just say that you don't know.",
-      "Use three sentences maximum and keep the answer concise.",
+      "Keep answer concise.",
       "Question: {question}",
-      "Book contents: {context}",
+      "Context: {context}",
       "Answer:",
-    ].join(" "),
+    ].join("\n"),
   );
 
   const ragChain = RunnableSequence.from([
@@ -57,11 +60,51 @@ async function main() {
     new StringOutputParser(),
   ]);
 
-  const results = ragChain.invoke({
-    question:
-      "What are the names of the 5 most important characters to the plot?",
+  console.log("Retrieving character names");
+  const characterNameAnswers = await ragChain.invoke({
+    question: [
+      "Give the names to at most 5 most important characters to the plot?",
+      "Each name should be on a separate line.",
+      "Example:\nAlice\nBob\nCarol\nDave\n",
+    ].join(" "),
   });
-  console.log("results", results);
+  console.log("Character names response:", characterNameAnswers);
+  if (promptForContinue() === false) {
+    return;
+  }
+
+  console.log("Retrieving character interactions per chapter");
+  const characterNames = parseCharacterNames(characterNameAnswers);
+  const characterPairs = uniquePairs(characterNames);
+  const interactions = await Promise.all(
+    Array.from({ length: chapterCount }, async (_, chapter) => {
+      characterPairs.flatMap(async ([name1, name2]) => {
+        const results = await ragChain.invoke({
+          question: [
+            `Write a summary of the interaction between ${name1} and ${name2} in chapter ${chapter}.`,
+            "If they do not interact then say no interaction.",
+            "Answer in at most 3 sentences.",
+          ].join(" "),
+        });
+        const interaction = parseInteraction(results);
+        if (interaction === undefined) {
+          return [];
+        }
+        return [
+          {
+            chapter,
+            name1,
+            name2,
+            interaction,
+          },
+        ];
+      });
+    }),
+  );
+  console.log("Character interactions:", interactions);
+  if (promptForContinue() === false) {
+    return;
+  }
 }
 
 main().catch((error) => {
