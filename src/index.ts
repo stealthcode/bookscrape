@@ -24,7 +24,7 @@ dotenv.config();
 const chatAPI = new ChatOpenAI({ model: "gpt-4o-mini", temperature: 0 });
 
 async function main() {
-  const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
+  const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
   const indices = await pinecone.listIndexes();
 
   const storeOption = promptOption([
@@ -34,6 +34,10 @@ async function main() {
   const retriever = await (storeOption === 0
     ? useExistingIndex()
     : createNewIndex());
+
+  if (retriever === undefined) {
+    return;
+  }
 
   const prompt = ChatPromptTemplate.fromTemplate<{
     context: string;
@@ -105,6 +109,8 @@ async function main() {
   if (promptForContinue() === false) {
     return;
   }
+
+  // TODO: Store characters and their interactions in graph database
 }
 
 main().catch((error) => {
