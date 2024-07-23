@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import os from "os";
 import * as path from "node:path";
 
@@ -10,6 +10,9 @@ export const saveState = (state: StoreState) => {
 };
 
 const loadAllState = (): AppState => {
+  if (existsSync(saveFilePath) === false) {
+    return {};
+  }
   const fileContent = readFileSync(saveFilePath, "utf8");
   const state = JSON.parse(fileContent);
   return state;
@@ -19,7 +22,7 @@ const loadAllState = (): AppState => {
  */
 export const getStateForTitle = (title: ContentTitle): StoreState[] => {
   const appState = loadAllState();
-  return Object.entries(appState[title])
+  return Object.entries(appState[title] || {})
     .sort(([dateTime1], [dateTime2]) =>
       DateTime.fromISO(dateTime1) < DateTime.fromISO(dateTime2) ? 1 : -1,
     )
