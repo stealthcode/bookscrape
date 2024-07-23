@@ -1,14 +1,10 @@
-export const uniquePairs = (items: string[]): string[][] => {
-  return items.flatMap((item1, i) =>
-    items.slice(i + 1).map((item2) => {
-      if (item1.startsWith(item2)) {
-        return [];
-      } else {
-        return [item1, item2];
-      }
-    }),
+export const uniquePairs = (items: string[]): Pair[] => {
+  return items.flatMap((name1, i) =>
+    items.slice(i + 1).map((name2) => ({ name1, name2 })),
   );
 };
+
+type Pair = { name1: string; name2: string };
 
 export const parseCharacterNames = (textResult: string): string[] => {
   return textResult.split("\n").filter((name) => name !== "");

@@ -6,16 +6,16 @@ describe("parse", () => {
     it("correctly pairs all elements without self-relations", () => {
       const result = uniquePairs(["a", "b", "c", "d"]);
       expect(result).toHaveLength(6);
-      expect(result).toContainEqual(["a", "b"]);
-      expect(result).toContainEqual(["a", "c"]);
-      expect(result).toContainEqual(["a", "d"]);
-      expect(result).not.toContainEqual(["a", "a"]);
-      expect(result).toContainEqual(["b", "c"]);
-      expect(result).toContainEqual(["b", "d"]);
-      expect(result).not.toContainEqual(["b", "b"]);
-      expect(result).toContainEqual(["c", "d"]);
-      expect(result).not.toContainEqual(["c", "c"]);
-      expect(result).not.toContainEqual(["d", "d"]);
+      expect(result).toContainEqual({ name1: "a", name2: "b" });
+      expect(result).toContainEqual({ name1: "a", name2: "c" });
+      expect(result).toContainEqual({ name1: "a", name2: "d" });
+      expect(result).not.toContainEqual({ name1: "a", name2: "a" });
+      expect(result).toContainEqual({ name1: "b", name2: "c" });
+      expect(result).toContainEqual({ name1: "b", name2: "d" });
+      expect(result).not.toContainEqual({ name1: "b", name2: "b" });
+      expect(result).toContainEqual({ name1: "c", name2: "d" });
+      expect(result).not.toContainEqual({ name1: "c", name2: "c" });
+      expect(result).not.toContainEqual({ name1: "d", name2: "d" });
     });
   });
 

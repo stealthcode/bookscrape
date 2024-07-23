@@ -1,4 +1,6 @@
+import { DateTime } from "luxon";
 import fs from "node:fs";
+import { StoreState } from "../state/state";
 
 export const promptForContinue = (): boolean => {
   while (true) {
@@ -31,4 +33,15 @@ export const promptOption = (options: string[]): number => {
       }
     }
   }
+};
+
+export const formatStoreState = ({
+  dateCreated,
+  chunkSize,
+  indexName,
+}: StoreState): string => {
+  const dateDiff = DateTime.fromISO(dateCreated)
+    .diffNow(["days", "hours", "minutes"])
+    .toHuman({ unitDisplay: "narrow" });
+  return `${dateDiff} ago ${chunkSize} chunkSize Index: ${indexName}`;
 };

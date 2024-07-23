@@ -2,9 +2,26 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { PineconeStore } from "@langchain/pinecone";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { splitDoc } from "../doc/doc";
-import { promptForContinue } from "../ux/ux";
+import { formatStoreState, promptForContinue, promptOption } from "../ux/ux";
 import { saveState, getStateForTitle, StoreState } from "../state/state";
 import { DateTime } from "luxon";
+
+const getStore = async (
+  contentTitle: string,
+): Promise<{ state: StoreState; store: PineconeStore }> => {
+  const states = getStateForTitle(contentTitle);
+  console.log(`Existing states: ${states.length}`);
+  const options = ["Create new index"].concat(
+    states.slice(0, 5).map(formatStoreState),
+  );
+  const optionChoice = options.length === 1 ? 0 : promptOption(options);
+  if (optionChoice === 0) {
+    return createNewIndex(contentTitle, 500, 40, "gpt-4o-mini");
+  }
+  const state = states[optionChoice - 1];
+  const store = await useExistingIndex(state.indexName);
+  return { state, store };
+};
 
 export const useExistingIndex = async (
   indexName: string,
