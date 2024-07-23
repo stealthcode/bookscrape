@@ -11,10 +11,9 @@ export const useExistingIndex = async (
 ): Promise<PineconeStore> => {
   const pinecone = new Pinecone();
   const pineconeIndex = pinecone.Index(indexName);
-  const store = await PineconeStore.fromExistingIndex(new OpenAIEmbeddings(), {
+  return await PineconeStore.fromExistingIndex(new OpenAIEmbeddings(), {
     pineconeIndex,
   });
-  return store;
 };
 
 export const createNewIndex = async (
