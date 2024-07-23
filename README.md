@@ -15,8 +15,9 @@ To run the program, you must first set the environment variables for the APIs us
 | LANGCHAIN_API_KEY | Langchain API key for RAG retrieval                      |
 | PINECONE_API_KEY  | API key for Pinecone vector datastore                    |
 | ASSET_FILE_PATH   | File path to the text to be analyzed                     |
+| ASSET_TITLE       | Name of the work to be analyzed (for metadata)           |
 
-Currently the parser assumes that the file is preprocessed into the format of each chapter starting with a line `CHAPTER [IVX]*.`.
+Currently the parser assumes that the file is preprocessed into the format of each chapter starting with a line matching regex `/CHAPTER [IVX\d]*./`.
 
 ```
 $ yarn run build && yarn run start
