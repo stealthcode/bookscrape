@@ -2,17 +2,21 @@ import { TokenTextSplitter } from "@langchain/textsplitters";
 import { Document } from "@langchain/core/documents";
 import * as fs from "node:fs";
 
-export const splitDoc = async (fileName: string): Promise<ExtractedData> => {
+export const splitDoc = async (
+  fileName: string,
+  chunkSize: number,
+  chunkOverlap: number,
+): Promise<ExtractedData> => {
   const rawData = fs.readFileSync(fileName);
   const text = rawData.toString();
   const chapters = text
-    .split(/^CHAPTER [IVX]+\.$/m)
+    .split(/^CHAPTER [IVX\d]+\.$/m)
     .filter((chapter) => chapter.trim() !== "");
 
   // chunk document
   const textSplitter = new TokenTextSplitter({
-    chunkSize: 500,
-    chunkOverlap: 40,
+    chunkSize,
+    chunkOverlap,
     encodingName: "gpt2",
   });
   const chapterCount = chapters.length;

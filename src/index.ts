@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
-import { OpenAIEmbeddings, ChatOpenAI } from "@langchain/openai";
-import { Pinecone } from "@pinecone-database/pinecone";
+import { ChatOpenAI } from "@langchain/openai";
 import { PineconeStore } from "@langchain/pinecone";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import {
@@ -8,7 +7,6 @@ import {
   RunnablePassthrough,
 } from "@langchain/core/runnables";
 
-import { splitDoc } from "./doc/doc";
 import { formatDocumentsAsString } from "langchain/util/document";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import {
@@ -18,25 +16,26 @@ import {
 } from "./parse/parse";
 import { promptForContinue, promptOption } from "./ux/ux";
 import { createNewIndex, useExistingIndex } from "./store/store";
+import { getStateForTitle, StoreState } from "./state/state";
+import { DateTime } from "luxon";
 
 dotenv.config();
 
 const chatAPI = new ChatOpenAI({ model: "gpt-4o-mini", temperature: 0 });
 
 async function main() {
-  const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-  const indices = await pinecone.listIndexes();
-
-  const storeOption = promptOption([
-    "Use existing Pinecone data",
-    "Build new Pinecone Index",
-  ]);
-  const retriever = await (storeOption === 0
-    ? useExistingIndex()
-    : createNewIndex());
-
-  if (retriever === undefined) {
+  const contentTitle = process.env.ASSET_TITLE!;
+  console.log(`Beginning process for ${contentTitle}`);
+  const { state, store } = await getStore(contentTitle);
+  const { sectionCount: chapterCount } = state;
+  if (store === undefined) {
     return;
+  }
+  const retriever = store.asRetriever({ k: 4, searchType: "similarity" });
+
+  console.log("Pinecone store initialized with documents");
+  if (promptForContinue() === false) {
+    return null;
   }
 
   const prompt = ChatPromptTemplate.fromTemplate<{
@@ -116,3 +115,31 @@ async function main() {
 main().catch((error) => {
   console.error("An error occurred:", error);
 });
+
+const getStore = async (
+  contentTitle: string,
+): Promise<{ state: StoreState; store: PineconeStore }> => {
+  const states = getStateForTitle(contentTitle);
+  console.log(`Existing states: ${states.length}`);
+  const options = ["Create new index"].concat(
+    states.slice(0, 5).map(formatStoreState),
+  );
+  const optionChoice = options.length === 1 ? 0 : promptOption(options);
+  if (optionChoice === 0) {
+    return createNewIndex(contentTitle, 500, 40, "gpt-4o-mini");
+  }
+  const state = states[optionChoice - 1];
+  const store = await useExistingIndex(state.indexName);
+  return { state, store };
+};
+
+const formatStoreState = ({
+  dateCreated,
+  chunkSize,
+  indexName,
+}: StoreState): string => {
+  const dateDiff = DateTime.fromISO(dateCreated)
+    .diffNow(["days", "hours", "minutes"])
+    .toHuman({ unitDisplay: "narrow" });
+  return `${dateDiff} ago ${chunkSize} chunkSize Index: ${indexName}`;
+};
