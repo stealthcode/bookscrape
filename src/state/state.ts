@@ -9,7 +9,7 @@ export const saveState = (state: StoreState) => {
   writeFileSync(saveFilePath, JSON.stringify(data), "utf8");
 };
 
-const loadAllState = (): AppState => {
+export const loadAllState = (): AppState => {
   if (existsSync(saveFilePath) === false) {
     return {};
   }
@@ -22,7 +22,13 @@ const loadAllState = (): AppState => {
  */
 export const getStateForTitle = (title: ContentTitle): StoreState[] => {
   const appState = loadAllState();
-  return Object.entries(appState[title] || {})
+  return sortStates(appState[title]);
+};
+
+export const sortStates = (
+  storeStates: Record<DateTimeISO, StoreState>,
+): StoreState[] => {
+  return Object.entries(storeStates || {})
     .sort(([dateTime1], [dateTime2]) =>
       DateTime.fromISO(dateTime1) < DateTime.fromISO(dateTime2) ? 1 : -1,
     )
