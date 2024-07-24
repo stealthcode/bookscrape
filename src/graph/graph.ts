@@ -1,4 +1,4 @@
-import neo4j, { Node, Relationship, Integer, RecordShape } from "neo4j-driver";
+import neo4j, { RecordShape } from "neo4j-driver";
 
 const driver = neo4j.driver(
   "neo4j://localhost",
