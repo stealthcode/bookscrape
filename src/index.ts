@@ -9,6 +9,7 @@ import { promptForContinue } from "./ux/ux";
 import { RetrievalChain } from "./retrieval/retrieval";
 import { saveCharacters, saveInteractions } from "./graph/graph";
 import { saveState } from "./state/state";
+import { getStore } from "./store/store";
 
 dotenv.config();
 

@@ -6,7 +6,7 @@ import { formatStoreState, promptForContinue, promptOption } from "../ux/ux";
 import { saveState, getStateForTitle, StoreState } from "../state/state";
 import { DateTime } from "luxon";
 
-const getStore = async (
+export const getStore = async (
   contentTitle: string,
 ): Promise<{ state: StoreState; store: PineconeStore }> => {
   const states = getStateForTitle(contentTitle);
