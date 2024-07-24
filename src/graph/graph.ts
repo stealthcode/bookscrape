@@ -2,8 +2,9 @@ import neo4j, { RecordShape } from "neo4j-driver";
 
 const driver = neo4j.driver(
   "neo4j://localhost",
-  neo4j.auth.basic("neo4j", "password"),
+  neo4j.auth.basic(process.env.NEO4J_USERNAME!, process.env.NEO4J_PASSWORD!),
 );
+
 export const saveCharacters = async (
   names: string[],
 ): Promise<RecordShape[]> => {
@@ -20,6 +21,9 @@ export const saveCharacters = async (
       );
       return result.records.map((record) => record.toObject());
     });
+  } catch (err) {
+    console.log("err", err);
+    throw err;
   } finally {
     await driver.close();
   }
