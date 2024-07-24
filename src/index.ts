@@ -7,6 +7,8 @@ import {
 } from "./parse/parse";
 import { promptForContinue } from "./ux/ux";
 import { RetrievalChain } from "./retrieval/retrieval";
+import { saveCharacters, saveInteractions } from "./graph/graph";
+import { saveState } from "./state/state";
 
 dotenv.config();
 
@@ -47,16 +49,16 @@ async function main() {
         "If they do not interact then say no interaction.",
         "Answer in at most 1 sentence.",
       ];
-      return api.invoke(question).then((answer) => ({
+      return api.invoke(question).then((summary) => ({
         chapter,
         name1,
         name2,
-        answer,
+        summary,
       }));
     }),
   );
   const interactions = (await Promise.all(batch)).flatMap((queryData) => {
-    const interaction = parseInteraction(queryData.answer);
+    const interaction = parseInteraction(queryData.summary);
     return interaction === undefined ? [] : [queryData];
   });
   console.log("Character interactions:", interactions);
@@ -64,13 +66,18 @@ async function main() {
     return;
   }
   // TODO: Store characters and their interactions in graph database
+  saveState({
+    ...state,
+    retrievalResults: {
+      characterNames,
+      interactions,
+    },
+  });
+  await saveCharacters(characterNames);
+  await saveInteractions(interactions);
+  console.log("Information saved to Neo4j");
 }
 
 main().catch((error) => {
   console.error("An error occurred:", error);
 });
-function getStore(
-  contentTitle: string,
-): { state: any; store: any } | PromiseLike<{ state: any; store: any }> {
-  throw new Error("Function not implemented.");
-}

@@ -46,6 +46,17 @@ export type StoreState = {
   chunkOverlap: number;
   chunkCount: number;
   modelName: string;
+  retrievalResults?: RetrievalResults;
+};
+
+export type RetrievalResults = {
+  characterNames?: string[];
+  interactions?: {
+    name1: string;
+    name2: string;
+    chapter: number;
+    summary: string;
+  }[];
 };
 
 export type ContentTitle = string;
