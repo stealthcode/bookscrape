@@ -1,55 +1,94 @@
-import neo4j, { RecordShape } from "neo4j-driver";
+import neo4j, { Driver, RecordShape } from "neo4j-driver";
 
-const driver = neo4j.driver(
-  "neo4j://localhost",
-  neo4j.auth.basic(process.env.NEO4J_USERNAME!, process.env.NEO4J_PASSWORD!),
-);
+export type ConnectionParams = {
+  username?: string;
+  password?: string;
+  database?: string;
+  replace?: boolean;
+};
+export class GraphStore {
+  driver: Driver;
 
-export const saveCharacters = async (
-  names: string[],
-): Promise<RecordShape[]> => {
-  const session = driver.session();
-  try {
-    return await session.executeWrite(async (txc) => {
-      const result = await txc.run(
-        `UNWIND $props AS map
+  constructor(params?: ConnectionParams) {
+    this.driver = this.getDriver(params);
+  }
+
+  public async saveCharacters(names: string[]): Promise<RecordShape[]> {
+    const session = this.driver.session();
+    try {
+      return session.executeWrite(async (tx) => {
+        const result = await tx.run(
+          `UNWIND $props AS map
          CREATE (n:Character)
          SET n = map`,
-        {
-          props: names.map((name) => ({ name })),
-        },
-      );
-      return result.records.map((record) => record.toObject());
-    });
-  } catch (err) {
-    console.log("err", err);
-    throw err;
-  } finally {
-    await driver.close();
+          {
+            props: names.map((name) => ({ name })),
+          },
+        );
+        return result.records.map((record) => record.toObject());
+      });
+    } finally {
+      await session.close();
+    }
   }
-};
 
-export const saveInteractions = async (
-  interactions: Interaction[],
-): Promise<RecordShape[]> => {
-  const session = driver.session();
-  try {
-    return await session.executeWrite(async (txc) => {
-      const result = await txc.run(
-        `UNWIND $interactions AS interactions
+  public async saveInteractions(
+    interactions: Interaction[],
+  ): Promise<RecordShape[]> {
+    const session = this.driver.session();
+    try {
+      return session.executeWrite(async (tx) => {
+        const result = await tx.run(
+          `UNWIND $interactions AS interactions
          MATCH (a:Character {name: i.name1}), (b:Character {name: i.name2})
          CREATE (a)-[:INTERACTED_WITH {chapter: i.chapter, summary: i.summary}]-(b),
          SET i = interactions`,
-        {
-          interactions,
-        },
-      );
-      return result.records.map((record) => record.toObject());
-    });
-  } finally {
-    await driver.close();
+          {
+            interactions,
+          },
+        );
+        return result.records.map((record) => record.toObject());
+      });
+    } finally {
+      await session.close();
+    }
   }
-};
+
+  public async close(): Promise<void> {
+    return this.driver.close();
+  }
+
+  getDriver = (params?: ConnectionParams): Driver => {
+    const {
+      username = process.env.NEO4J_USERNAME!,
+      password = process.env.NEO4J_PASSWORD!,
+      database = process.env.NEO4J_DATABASE!,
+      replace = false,
+    } = params || {};
+    const driver = neo4j.driver(
+      "neo4j://localhost",
+      neo4j.auth.basic(username, password),
+    );
+    const session = driver.session({
+      database: database,
+    });
+    try {
+      session.executeWrite((tx) => {
+        if (replace) {
+          tx.run("CREATE DATABASE OR REPLACE $database", { database });
+        } else {
+          tx.run("CREATE DATABASE $database IF NOT EXISTS", { database });
+        }
+      });
+    } catch (err) {
+      console.log("Failed to create database", database, err);
+      throw err;
+    } finally {
+      session.close();
+    }
+    return driver;
+  };
+}
 
 type Interaction = {
   name1: string;

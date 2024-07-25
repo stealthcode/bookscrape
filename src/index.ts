@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import { configDotenv } from "dotenv";
 
 import {
   parseCharacterNames,
@@ -7,11 +7,11 @@ import {
 } from "./parse/parse";
 import { promptForContinue } from "./ux/ux";
 import { RetrievalChain } from "./retrieval/retrieval";
-import { saveCharacters, saveInteractions } from "./graph/graph";
+import { GraphStore } from "./graph/graph";
 import { saveState } from "./state/state";
 import { getStore } from "./store/store";
 
-dotenv.config();
+configDotenv();
 
 async function main() {
   const contentTitle = process.env.ASSET_TITLE!;
@@ -74,9 +74,14 @@ async function main() {
       interactions,
     },
   });
-  await saveCharacters(characterNames);
-  await saveInteractions(interactions);
-  console.log("Information saved to Neo4j");
+  const graphStore = new GraphStore();
+  try {
+    await graphStore.saveCharacters(characterNames);
+    await graphStore.saveInteractions(interactions);
+    console.log("Information saved to Neo4j");
+  } finally {
+    await graphStore.close();
+  }
 }
 
 main().catch((error) => {
