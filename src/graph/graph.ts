@@ -8,9 +8,13 @@ export type ConnectionParams = {
 };
 export class GraphStore {
   driver: Driver;
+  database: string;
+  replace: boolean;
 
   constructor(params?: ConnectionParams) {
     this.driver = this.getDriver(params);
+    this.database = process.env.NEO4J_DATABASE!;
+    this.replace = false;
   }
 
   public async saveCharacters(names: string[]): Promise<RecordShape[]> {
@@ -58,26 +62,38 @@ export class GraphStore {
     return this.driver.close();
   }
 
-  getDriver = (params?: ConnectionParams): Driver => {
+  getDriver(params?: ConnectionParams): Driver {
     const {
       username = process.env.NEO4J_USERNAME!,
       password = process.env.NEO4J_PASSWORD!,
-      database = process.env.NEO4J_DATABASE!,
-      replace = false,
     } = params || {};
     const driver = neo4j.driver(
       "neo4j://localhost",
       neo4j.auth.basic(username, password),
     );
-    const session = driver.session({
+    return driver;
+  }
+
+  public async initializeDatabase(): Promise<void> {
+    const database = this.database;
+    const session = this.driver.session({
       database: database,
     });
     try {
-      session.executeWrite((tx) => {
-        if (replace) {
-          tx.run("CREATE DATABASE OR REPLACE $database", { database });
+      await session.executeWrite(async (tx) => {
+        const { records } = await tx.run("SHOW DATABASES", {
+          database,
+        });
+        if (records.length === 0) {
+          return await tx.run("CREATE DATABASE $database", { database });
+        } else if (this.replace) {
+          return await tx.run("CREATE DATABASE OR REPLACE $database", {
+            database,
+          });
         } else {
-          tx.run("CREATE DATABASE $database IF NOT EXISTS", { database });
+          return await tx.run("CREATE DATABASE $database IF NOT EXISTS", {
+            database,
+          });
         }
       });
     } catch (err) {
@@ -86,8 +102,7 @@ export class GraphStore {
     } finally {
       session.close();
     }
-    return driver;
-  };
+  }
 }
 
 type Interaction = {

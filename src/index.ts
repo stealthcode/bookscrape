@@ -10,6 +10,7 @@ import { RetrievalChain } from "./retrieval/retrieval";
 import { GraphStore } from "./graph/graph";
 import { saveState } from "./state/state";
 import { getStore } from "./store/store";
+import { OpenAI } from "openai";
 
 configDotenv();
 
@@ -66,7 +67,7 @@ async function main() {
   if (promptForContinue() === false) {
     return;
   }
-  // TODO: Store characters and their interactions in graph database
+  // Store characters and their interactions in graph database
   saveState({
     ...state,
     retrievalResults: {
@@ -82,6 +83,11 @@ async function main() {
   } finally {
     await graphStore.close();
   }
+  const openAI = new OpenAI();
+  const r = await openAI.embeddings.create({
+    input: "",
+    model: "text-embedding-ada-002",
+  });
 }
 
 main().catch((error) => {

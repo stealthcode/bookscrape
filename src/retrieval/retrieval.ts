@@ -7,8 +7,6 @@ import {
   RunnableSequence,
   RunnablePassthrough,
 } from "@langchain/core/runnables";
-import { z } from "zod";
-import { StructuredOutputParser } from "@langchain/core/output_parsers";
 
 const chatAPI = new ChatOpenAI({ model: "gpt-4o-mini", temperature: 0 });
 
